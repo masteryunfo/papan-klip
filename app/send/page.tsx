@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { EncryptedMessage, PlainMessage } from "../lib/types";
+import { toArrayBuffer } from "../lib/crypto";
 
 const DEFAULT_ITERATIONS = 200_000;
 const MAX_PLAINTEXT_BYTES = 50 * 1024;
@@ -29,7 +30,7 @@ async function encryptPayload(text: string, pin: string): Promise<EncryptedMessa
   const key = await crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt,
+      salt: toArrayBuffer(salt),
       iterations: DEFAULT_ITERATIONS,
       hash: "SHA-256",
     },
@@ -39,7 +40,7 @@ async function encryptPayload(text: string, pin: string): Promise<EncryptedMessa
     ["encrypt"],
   );
   const ciphertext = await crypto.subtle.encrypt(
-    { name: "AES-GCM", iv },
+    { name: "AES-GCM", iv: toArrayBuffer(iv) },
     key,
     encoder.encode(text),
   );

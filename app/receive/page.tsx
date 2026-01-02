@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
-import type { EncryptedMessage, PlainMessage, StoredMessage } from "../lib/types";
+import type { EncryptedMessage, StoredMessage } from "../lib/types";
+import { toArrayBuffer } from "../lib/crypto";
 
 const INITIAL_BACKOFF_MS = 1800;
 const MAX_BACKOFF_MS = 10_000;
@@ -34,7 +35,7 @@ async function decryptPayload(payload: EncryptedMessage, pin: string): Promise<s
   const key = await crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt,
+      salt: toArrayBuffer(salt),
       iterations: payload.iterations,
       hash: payload.hash,
     },
@@ -44,9 +45,9 @@ async function decryptPayload(payload: EncryptedMessage, pin: string): Promise<s
     ["decrypt"],
   );
   const plaintext = await crypto.subtle.decrypt(
-    { name: "AES-GCM", iv },
+    { name: "AES-GCM", iv: toArrayBuffer(iv) },
     key,
-    ciphertext,
+    toArrayBuffer(ciphertext),
   );
   return decoder.decode(plaintext);
 }
