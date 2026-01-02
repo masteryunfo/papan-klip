@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   const script =
     "local val = redis.call('GET', KEYS[1]); if not val then return nil; end; redis.call('DEL', KEYS[1]); return val;";
 
-  const raw = await redis.eval<string>(script, [`msg:${token}`], []);
+  const raw = await redis.eval<[], string | null>(script, [`msg:${token}`], []);
   if (!raw) {
     return NextResponse.json({ ok: false, message: null });
   }
