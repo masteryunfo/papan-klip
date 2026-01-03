@@ -24,6 +24,24 @@ async function resolveToken(identifier: string): Promise<string | null> {
   return token ?? null;
 }
 
+function unwrapRedisValue(value: unknown): unknown {
+  if (value && typeof value === "object" && "result" in value) {
+    return (value as { result?: unknown }).result;
+  }
+  return value;
+}
+
+function previewValue(value: unknown): string {
+  if (typeof value === "string") {
+    return value.slice(0, 200);
+  }
+  try {
+    return JSON.stringify(value).slice(0, 200);
+  } catch {
+    return String(value);
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => null);
@@ -41,17 +59,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, message: null });
     }
 
-    let raw: string | null = null;
+    let raw: unknown = null;
     if (typeof redis.getdel === "function") {
-      raw = await redis.getdel<string>(`msg:${token}`);
+      raw = await redis.getdel(`msg:${token}`);
     } else {
-      raw = await redis.get<string>(`msg:${token}`);
+      raw = await redis.get(`msg:${token}`);
       if (raw) {
         await redis.del(`msg:${token}`);
       }
     }
 
-    if (!raw) {
+    const unwrapped = unwrapRedisValue(raw);
+    if (!unwrapped) {
       return NextResponse.json({ ok: true, message: null });
     }
 
@@ -60,10 +79,15 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const message = JSON.parse(raw) as StoredMessage;
+      let message: StoredMessage;
+      if (typeof unwrapped === "string") {
+        message = JSON.parse(unwrapped) as StoredMessage;
+      } else {
+        message = unwrapped as StoredMessage;
+      }
       return NextResponse.json({ ok: true, message });
     } catch (error) {
-      const preview = raw.slice(0, 200);
+      const preview = previewValue(unwrapped);
       console.error("Failed to parse stored message payload", {
         error,
         preview,
