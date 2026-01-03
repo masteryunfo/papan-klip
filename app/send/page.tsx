@@ -5,6 +5,8 @@ import { useSearchParams } from "next/navigation";
 import type { EncryptedMessage, PlainMessage } from "../lib/types";
 import { toArrayBuffer } from "../lib/crypto";
 
+export const dynamic = "force-dynamic";
+
 const DEFAULT_ITERATIONS = 200_000;
 const MAX_PLAINTEXT_BYTES = 50 * 1024;
 
