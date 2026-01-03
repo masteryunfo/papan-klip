@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
 import type { EncryptedMessage, PlainMessage } from "../lib/types";
 import { toArrayBuffer } from "../lib/crypto";
 
@@ -60,7 +59,6 @@ async function encryptPayload(text: string, pin: string): Promise<EncryptedMessa
 }
 
 export default function SendPage() {
-  const searchParams = useSearchParams();
   const [identifier, setIdentifier] = useState("");
   const [text, setText] = useState("");
   const [pin, setPin] = useState("");
@@ -69,11 +67,15 @@ export default function SendPage() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    const token = searchParams.get("t");
+    if (typeof window === "undefined") {
+      return;
+    }
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("t");
     if (token) {
       setIdentifier(token);
     }
-  }, [searchParams]);
+  }, []);
 
   async function handleSend() {
     setSending(true);
