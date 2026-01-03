@@ -137,6 +137,9 @@ export default function ReceivePage() {
         setPolling(false);
         return;
       }
+      if (data.ok && data.message === null) {
+        setError(null);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Polling failed.");
       setPolling(false);

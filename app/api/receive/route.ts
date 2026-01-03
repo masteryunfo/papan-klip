@@ -25,28 +25,55 @@ async function resolveToken(identifier: string): Promise<string | null> {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => null);
-  if (!body || typeof body.identifier !== "string") {
-    return NextResponse.json({ ok: false, message: null }, { status: 400 });
-  }
-
-  const token = await resolveToken(body.identifier);
-  if (!token) {
-    return NextResponse.json({ ok: false, message: null });
-  }
-
-  const script =
-    "local val = redis.call('GET', KEYS[1]); if not val then return nil; end; redis.call('DEL', KEYS[1]); return val;";
-
-  const raw = await redis.eval<[], string | null>(script, [`msg:${token}`], []);
-  if (!raw) {
-    return NextResponse.json({ ok: false, message: null });
-  }
-
   try {
-    const message = JSON.parse(raw) as StoredMessage;
-    return NextResponse.json({ ok: true, message });
-  } catch {
-    return NextResponse.json({ ok: false, message: null }, { status: 500 });
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body.identifier !== "string") {
+      return NextResponse.json(
+        { ok: false, error: "missing_token" },
+        { status: 400 },
+      );
+    }
+
+    const identifier = body.identifier.trim();
+    const isShortCode = SHORT_CODE_RE.test(identifier.toUpperCase());
+    const token = await resolveToken(identifier);
+    if (!token) {
+      return NextResponse.json({ ok: true, message: null });
+    }
+
+    let raw: string | null = null;
+    if (typeof redis.getdel === "function") {
+      raw = await redis.getdel<string>(`msg:${token}`);
+    } else {
+      raw = await redis.get<string>(`msg:${token}`);
+      if (raw) {
+        await redis.del(`msg:${token}`);
+      }
+    }
+
+    if (!raw) {
+      return NextResponse.json({ ok: true, message: null });
+    }
+
+    if (isShortCode) {
+      await redis.del(`code:${identifier.toUpperCase()}`);
+    }
+
+    try {
+      const message = JSON.parse(raw) as StoredMessage;
+      return NextResponse.json({ ok: true, message });
+    } catch (error) {
+      console.error("Failed to parse stored message payload", error);
+      return NextResponse.json(
+        { ok: false, error: "bad_payload" },
+        { status: 500 },
+      );
+    }
+  } catch (error) {
+    console.error("Receive handler failed", error);
+    return NextResponse.json(
+      { ok: false, error: "receive_failed" },
+      { status: 500 },
+    );
   }
 }
