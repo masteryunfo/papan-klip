@@ -71,7 +71,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  await redis.set(`msg:${token}`, JSON.stringify(body.message), {
+  const payload: StoredMessage = body.message;
+
+  await redis.set(`msg:${token}`, JSON.stringify(payload), {
     ex: MESSAGE_TTL_SECONDS,
   });
 

@@ -63,11 +63,16 @@ export async function POST(req: NextRequest) {
       const message = JSON.parse(raw) as StoredMessage;
       return NextResponse.json({ ok: true, message });
     } catch (error) {
-      console.error("Failed to parse stored message payload", error);
-      return NextResponse.json(
-        { ok: false, error: "bad_payload" },
-        { status: 500 },
-      );
+      const preview = raw.slice(0, 200);
+      console.error("Failed to parse stored message payload", {
+        error,
+        preview,
+      });
+      return NextResponse.json({
+        ok: false,
+        message: null,
+        error: "bad_payload",
+      });
     }
   } catch (error) {
     console.error("Receive handler failed", error);
